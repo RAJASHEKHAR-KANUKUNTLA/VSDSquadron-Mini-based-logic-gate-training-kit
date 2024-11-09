@@ -78,9 +78,6 @@ This project leverages the VSDSquadron Mini RISC-V based 32-bit microcontroller 
 - Buzzer for auditory feedback
 - Resistors and connecting wires
 
-## Circuit Diagram
-*Include a link or image of your circuit diagram if available.*
-
 ## Code Overview
 ### Libraries Required
 - `Wire.h` for I2C communication
@@ -98,9 +95,188 @@ This project leverages the VSDSquadron Mini RISC-V based 32-bit microcontroller 
 - Arduino IDE (with RISC-V support)
 - VSDSquadron Mini Board Support Package (installable via the Boards Manager in Arduino IDE)
 - Required libraries (installable via Library Manager)
+  
+## Source Code
+``` c++
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 
-### Installation
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/RAJASHEKHAR-KANUKUNTLA/VSDSquadron-Mini-based-logic-gate-training-kit-.git
-   ```
+#define I2C_ADDR 0x27
+#define LCD_COLUMNS 20
+#define LCD_ROWS 4
+
+
+// Define pin numbers for inputs, output, gate selection buttons, and reset button
+const int inputPins[2] = {PD1, PD2};
+const int outputPin = PD3;
+const int gateSelectPins[6] = {PC0, PC3, PC4, PC5, PC6, PC7};
+const int resetButtonPin = PD7;
+const int buzzerPin = PD4;
+
+// Create the LCD and OLED objects
+LiquidCrystal_I2C lcd(I2C_ADDR, LCD_COLUMNS, LCD_ROWS);
+
+// Variables to store inputs, output, and selected gate
+bool inputs[2] = {0, 0};
+bool output = 0;
+int selectedGate = 0;
+
+// Function to read input switches
+void readInputs() {
+  for (int i = 0; i < 2; i++) {
+    inputs[i] = digitalRead(inputPins[i]);
+  }
+}
+
+// Function to update output based on the selected logic gate
+void updateOutput() {
+  switch (selectedGate) {
+    case 0: // AND
+      output = inputs[0] && inputs[1];
+      break;
+    case 1: // OR
+      output = inputs[0] || inputs[1];
+      break;
+    case 2: // XOR
+      output = inputs[0] ^ inputs[1];
+      break;
+    case 3: // NAND
+      output = !(inputs[0] && inputs[1]);
+      break;
+    case 4: // NOT (using only the first input)
+      output = !inputs[0];
+      break;
+    case 5: // NOR
+      output = !(inputs[0] || inputs[1]);
+      break;
+  }
+}
+
+// Function to update the output LED
+void updateLED() {
+  digitalWrite(outputPin, output);
+}
+
+// Function to display status on the LCD
+void updateLCD() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Gate: ");
+  switch (selectedGate) {
+    case 0: lcd.print("AND"); break;
+    case 1: lcd.print("OR"); break;
+    case 2: lcd.print("XOR"); break;
+    case 3: lcd.print("NAND"); break;
+    case 4: lcd.print("NOT"); break;
+    case 5: lcd.print("NOR"); break;
+    
+  }
+
+  lcd.setCursor(0, 1);
+  lcd.print("Inputs: ");
+  lcd.print(inputs[0]);
+  lcd.print(", ");
+  lcd.print(inputs[1]);
+
+  lcd.setCursor(0, 2);
+  lcd.print("Output: ");
+  lcd.print(output);
+  delay(500);
+}
+
+// Function to update OLED with gate symbol and input/output status
+
+
+// Function to reset the system
+void resetSystem() {
+  selectedGate = 0;
+  inputs[0] = 0;
+  inputs[1] = 0;
+  output = 0;
+  updateLED();
+  updateLCD();
+}
+
+// Function to check gate selection and play buzzer on change
+void checkGateSelection() {
+  for (int i = 0; i < 6; i++) {
+    if (digitalRead(gateSelectPins[i]) == LOW) {
+      selectedGate = i;
+      
+   //  Tone(buzzerPin, 1000, 100); // Short beep when a gate button is pressed
+      //digitalWrite(buzzerPin, HIGH);
+      playTone(440, 500); 
+      delay(300);
+    }
+  }
+}
+
+void playTone(int frequency, int duration) {
+    // Calculate the delay for each cycle (in microseconds)
+    long delayTime = 1000000L / frequency / 2;  // Divide by 2 for half-cycle
+    
+    // Calculate the number of cycles for the specified duration
+    long numCycles = frequency * duration / 1000;
+
+    // Generate the tone by toggling the buzzer pin
+    for (long i = 0; i < numCycles; i++) {
+        digitalWrite(buzzerPin, HIGH);     // Set buzzer pin high
+        delayMicroseconds(delayTime);      // Wait for half of the cycle
+
+        digitalWrite(buzzerPin, LOW);      // Set buzzer pin low
+        delayMicroseconds(delayTime);      // Wait for the other half
+    }
+}
+
+void setup() {
+  lcd.init();
+  lcd.backlight();
+  lcd.begin(LCD_COLUMNS, LCD_ROWS);
+  lcd.print("Logic Gates Setup");
+
+  for (int i = 0; i < 2; i++) {
+    pinMode(inputPins[i], INPUT_PULLUP);
+  }
+  pinMode(outputPin, OUTPUT);
+  
+  for (int i = 0; i < 6; i++) {
+    pinMode(gateSelectPins[i], INPUT_PULLUP);
+  }
+  pinMode(resetButtonPin, INPUT_PULLUP);
+  pinMode(buzzerPin, OUTPUT);
+
+  resetSystem();
+}
+
+void loop() {
+  if (digitalRead(resetButtonPin) == LOW) {
+    resetSystem();
+    delay(300);
+  }
+  
+  readInputs();
+  checkGateSelection();
+  
+  updateOutput();
+  updateLED();
+  updateLCD();
+
+  delay(10);
+}
+```
+
+# Image of the project
+![project](https://github.com/user-attachments/assets/cc681cf4-fd7b-4d0b-9f32-271c3bc34601)
+
+# Demonstration Video of the project
+
+
+https://github.com/user-attachments/assets/f0fb7b55-fdf2-43a8-a26f-188d911bad69
+
+### Conclusion
+
+The VSDSquadron Mini Logic Gate Learning Project offers an innovative, hands-on approach for beginners to explore and understand the fundamental principles of digital logic gates. By combining an interactive hardware setup, real-time visual and auditory feedback, and a versatile RISC-V based microcontroller, this project bridges the gap between theoretical concepts and practical implementation. It provides an engaging alternative to traditional training kits, fostering a deeper understanding of digital electronics through experimentation and active learning. This system is ideal for students, educators, and enthusiasts looking to strengthen their foundational knowledge in electronics and logic design in a practical, affordable, and effective way.
+
+## Author
+
+- [Rajashekhar Kanukuntla](https://github.com/RAJASHEKHAR-KANUKUNTLA), Bachelor of Technology in Electronics &Communication Engineering ,University College Of Engineering Kakatiya University, kothagudem,Telangana.
